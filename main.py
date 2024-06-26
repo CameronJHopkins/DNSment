@@ -145,6 +145,10 @@ class DnsScannerApp(QMainWindow):
         self.settings_button.setGeometry(320, 240, 70, 30)
         self.settings_button.clicked.connect(self.open_settings_dialog)
 
+        self.progress_timer = QTimer(self)
+        self.progress_timer.timeout.connect(self.update_progress)
+
+
     def open_settings_dialog(self):
         settings_dialog = SettingsDialog(self)
         settings_dialog.include_current_dns_checkbox.setChecked(self.scan_user_dns)  # Set the state of the "Include current DNS" checkbox
@@ -235,11 +239,26 @@ class DnsScannerApp(QMainWindow):
         self.async_task.finished.connect(self.scanning_done)
 
         self.async_task.start()
+        self.progress_timer.start(500)  # Update progress every 500 ms
 
     @pyqtSlot()
     def scanning_done(self):
         self.is_scanning = False
-        self.scan_button.setEnabled(True) 
+        self.scan_button.setEnabled(True)
+        self.progress_timer.stop()
+
+    @pyqtSlot(int, int)
+    def update_progress(self, current=None, total=None):
+        if current is None or total is None:
+            current = self.async_task.progress[0]
+            total = self.async_task.progress[1]
+
+        if total == 0:
+            return
+
+        progress = int((current / total) * 100)
+        self.progress_bar.setValue(progress)
+        self.progress_label.setText(f"{current}/{total}")
 
     @pyqtSlot(list)
     def scanning_finished(self, result):
